@@ -39,7 +39,7 @@
         <version.org.eclipse.microprofile>3.3</version.org.eclipse.microprofile>
         <version.org.jboss.arquillian>1.5.0.Final</version.org.jboss.arquillian>
         <version.org.jboss.wildfly.dist>20.0.0.Final</version.org.jboss.wildfly.dist>
-        <version.org.wildfly.arquillian>3.0.0.Beta1</version.org.wildfly.arquillian>
+        <version.org.wildfly.arquillian>3.0.0.Beta2</version.org.wildfly.arquillian>
         <version.org.fusesource.jansi>1.18</version.org.fusesource.jansi>
         <!-- wildfly-core update needed to have the launcher version with BootableJarCommandBuilder used to start
         the server up -->
@@ -60,11 +60,11 @@
         <!-- Galleon -->
         <galleon.fork.embedded>true</galleon.fork.embedded>
         <galleon.log.time>true</galleon.log.time>
-        <testsuite.galleon.pack.groupId>${env.WILDFLY_GALLEON_PACK_GROUP_ID}</testsuite.galleon.pack.groupId>
+        <testsuite.galleon.pack.groupId>${testsuite.galleon.pack.groupId}</testsuite.galleon.pack.groupId>
         <testsuite.galleon.pack.artifactId>wildfly-galleon-pack</testsuite.galleon.pack.artifactId>
-        <testsuite.galleon.pack.version>${env.WILDFLY_GALLEON_PACK_VERSION}</testsuite.galleon.pack.version>
+        <testsuite.galleon.pack.version>${testsuite.galleon.pack.version}</testsuite.galleon.pack.version>
         <!-- Bootable JAR -->
-        <version.org.wildfly.jar.plugin>${env.BOOTABLE_JAR_MAVEN_PLUGIN_VERSION}</version.org.wildfly.jar.plugin>
+        <version.org.wildfly.jar.plugin>${version.org.wildfly.jar.plugin}</version.org.wildfly.jar.plugin>
     </properties>
 
     <dependencyManagement>
