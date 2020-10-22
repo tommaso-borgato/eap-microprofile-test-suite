@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Logger;
 
 import org.jboss.eap.qe.microprofile.health.tools.HealthUrlProvider;
 import org.jboss.eap.qe.microprofile.tooling.server.configuration.arquillian.ArquillianContainerProperties;
@@ -25,6 +26,7 @@ import io.restassured.response.Response;
  * Performs calls to the readiness health checks probes and stores the returned states
  */
 public class ReadinessChecker implements Callable<Boolean> {
+    private final static Logger LOGGER = Logger.getLogger(ReadinessChecker.class.getName());
 
     private AtomicBoolean shouldStop = new AtomicBoolean(false);
 
@@ -41,20 +43,25 @@ public class ReadinessChecker implements Callable<Boolean> {
     @Override
     public Boolean call() {
         addState(ReadinessState.START());
+        //LOGGER.info("[MARKER] START");
         while (!shouldStop.get()) {
             try {
                 Response response = get(HealthUrlProvider.readyEndpoint(arqProps));
                 String responseContent = response.then().extract().asString();
                 if (!responseContent.isEmpty()) {
+                    //LOGGER.info("[MARKER] response.getBody(): " + response.getBody().prettyPrint());
                     if (response.getBody().path("checks") instanceof List) {
                         List<Map<String, String>> checks = response.getBody().path("checks");
                         if (response.getStatusCode() == 503) {
                             if (checks == null) {
                                 addState(DOWN_NO_CONTENT());
+                                //LOGGER.info("[MARKER] DOWN_NO_CONTENT " + HealthUrlProvider.readyEndpoint(arqProps));
                             } else if ((checks.size() == 4) && contains(checks, "empty-readiness-checks")) {
                                 addState(DOWN_NO_CHECK());
+                                //LOGGER.info("[MARKER] DOWN_NO_CHECK " + HealthUrlProvider.readyEndpoint(arqProps));
                             } else if ((checks.size() == 4) && contains(checks, DelayedReadinessHealthCheck.NAME)) {
                                 addState(ReadinessState.DOWN_WITH_CHECK());
+                                //LOGGER.info("[MARKER] DOWN_WITH_CHECK " + HealthUrlProvider.readyEndpoint(arqProps));
                             }
                         } else if (response.getStatusCode() == 200) {
                             if (checks == null) {
@@ -62,10 +69,13 @@ public class ReadinessChecker implements Callable<Boolean> {
                             }
                             if ((checks.size() == 4) && contains(checks, "empty-readiness-checks")) {
                                 addState(UP_NO_CHECK());
+                                //LOGGER.info("[MARKER] UP_NO_CHECK " + HealthUrlProvider.readyEndpoint(arqProps));
                             } else if ((checks.size() == 4) && contains(checks, DelayedReadinessHealthCheck.NAME)) {
                                 addState(UP_WITH_CHECK());
+                                //LOGGER.info("[MARKER] UP_WITH_CHECK " + HealthUrlProvider.readyEndpoint(arqProps));
                             } else if ((checks.size() == 4) && contains(checks, DEFAULT_READINESS_CHECK_NAME_PREFIX)) {
                                 addState(UP_WITH_DEFAULT_CHECK());
+                                //LOGGER.info("[MARKER] UP_WITH_DEFAULT_CHECK " + HealthUrlProvider.readyEndpoint(arqProps));
                             }
                         }
                     }
@@ -73,12 +83,15 @@ public class ReadinessChecker implements Callable<Boolean> {
             } catch (Exception e) {
                 if (e instanceof ConnectException) {
                     addState(UNABLE_TO_CONNECT());
+                    //LOGGER.info("[MARKER] UNABLE_TO_CONNECT");
                 } else {
+                    //LOGGER.info("[MARKER] RuntimeException: " + e.getMessage());
                     throw new RuntimeException(e);
                 }
             }
         }
         addState(ReadinessState.END());
+        //LOGGER.info("[MARKER] END");
         return true;
     }
 

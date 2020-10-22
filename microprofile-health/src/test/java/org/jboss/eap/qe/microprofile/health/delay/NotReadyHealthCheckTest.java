@@ -8,6 +8,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -15,6 +16,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.logging.Logger;
 
 import org.jboss.arquillian.container.test.api.ContainerController;
 import org.jboss.arquillian.junit.Arquillian;
@@ -239,8 +241,8 @@ public class NotReadyHealthCheckTest {
         File source = delayedDownReadinessCheckDeployment();
         File dest = new File(System.getProperty("container.base.dir.manual.mode") + "/deployments/" + source.getName());
         Files.copy(source.toPath(), dest.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        ReadinessChecker readinessChecker = new ReadinessChecker(arqProps);
         try {
-            ReadinessChecker readinessChecker = new ReadinessChecker(arqProps);
             Future<Boolean> readinessCheckerFuture = executorService.submit(readinessChecker);
 
             controller.start(ManualTests.ARQUILLIAN_CONTAINER);
@@ -265,6 +267,7 @@ public class NotReadyHealthCheckTest {
                             ReadinessState.DOWN_NO_CHECK(),
                             ReadinessState.DOWN_WITH_CHECK());
         } finally {
+            readinessChecker.stop();
             Files.delete(dest.toPath());
         }
     }
@@ -282,34 +285,61 @@ public class NotReadyHealthCheckTest {
      *             readiness health check is actually ready - it must return HTTP 200 and an {@code UP} status.
      * @tpSince EAP 7.4.0.CD19
      */
+    private final static Logger LOGGER = Logger.getLogger(NotReadyHealthCheckTest.class.getName());
+
+    // mvn clean verify --fail-never -Djboss.dist=/home/tborgato/tmp/Microprofile/jboss-eap-7.3 -Dinsecure.repositories=WARN -Dtest=NotReadyHealthCheckTest > log.txt 2>&1
+
     @Test
     @InSequence(3)
     public void unexpectedHealthChecksTest()
             throws IOException, ConfigurationException, InterruptedException, TimeoutException, ExecutionException {
-
+        LOGGER.info("[MARKER] START unexpectedHealthChecksTest");
         File source = unexpectedReadinessChecksDeployment();
         File dest = new File(System.getProperty("container.base.dir.manual.mode") + "/deployments/" + source.getName());
+        LOGGER.info("[MARKER] deploy");
         Files.copy(source.toPath(), dest.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        Files.copy(source.toPath(), Paths.get("/tmp/" + source.getName()), StandardCopyOption.REPLACE_EXISTING);
+        ReadinessChecker readinessChecker = new ReadinessChecker(arqProps);
         try {
-            ReadinessChecker readinessChecker = new ReadinessChecker(arqProps);
-
+            LOGGER.info("[MARKER] readinessChecker start");
             Future<Boolean> readinessCheckerFuture = executorService.submit(readinessChecker);
 
+            LOGGER.info("[MARKER] controller start");
             controller.start(ManualTests.ARQUILLIAN_CONTAINER);
             try {
+                LOGGER.info("[MARKER] get " + HealthUrlProvider.readyEndpoint(arqProps));
                 get(HealthUrlProvider.readyEndpoint(arqProps)).then()
                         .statusCode(200)
                         .body("status", is("UP"),
                                 "checks.name", containsInAnyOrder(
                                         "ready-deployment." + DelayedLivenessHealthCheck.class.getSimpleName() + ".war",
-                                        "deployments-status", "boot-errors", "server-state"));
+                                        "deployments-status", "boot-errors", "server-state"))
+                        .log();
             } finally {
+                LOGGER.info("[MARKER] controller stop");
                 controller.stop(ManualTests.ARQUILLIAN_CONTAINER);
             }
 
+            LOGGER.info("[MARKER] readinessChecker stop");
             readinessChecker.stop();
             Assert.assertTrue(readinessCheckerFuture.get(5, TimeUnit.SECONDS));
 
+            // [ERROR]   NotReadyHealthCheckTest.unexpectedHealthChecksTest:327 Sequence of states
+            // [
+            // <start>,
+            // <unable to connect>,
+            // <DOWN (503), custom check NOT installed>,
+            // <UP (200), default check installed>
+            // ]
+            // is not in
+            // [
+            // <start at 2020-10-21 15:25:48.764>,
+            // <unable to connect at 2020-10-21 15:25:48.767>,
+            // <UP (200), default check installed at 2020-10-21 15:25:59.348>,
+            // <unable to connect at 2020-10-21 15:25:59.524>,
+            // <end at 2020-10-21 15:25:59.61>
+            // ]
+            // as expected
             ReadinessStatesValidator.of(readinessChecker)
                     .finishedProperly()
                     .containSequence(
@@ -318,7 +348,9 @@ public class NotReadyHealthCheckTest {
                             ReadinessState.DOWN_NO_CHECK(),
                             ReadinessState.UP_WITH_DEFAULT_CHECK());
         } finally {
+            readinessChecker.stop();
             Files.delete(dest.toPath());
         }
+        LOGGER.info("[MARKER] END unexpectedHealthChecksTest");
     }
 }

@@ -4,6 +4,7 @@ import static org.jboss.eap.qe.microprofile.health.delay.ReadinessState.END;
 import static org.jboss.eap.qe.microprofile.health.delay.ReadinessState.START;
 
 import java.util.List;
+import java.util.logging.Logger;
 
 import org.junit.Assert;
 
@@ -18,14 +19,18 @@ public class ReadinessStatesValidator {
 
     private final List<ReadinessState> states;
 
+    private final static Logger LOGGER = Logger.getLogger(ReadinessStatesValidator.class.getName());
+
     private ReadinessStatesValidator(List<ReadinessState> states) {
         this.states = states;
     }
 
     public ReadinessStatesValidator containSequence(ReadinessState... sequence) {
+        LOGGER.info("[MARKER] Sequence of states requested: " + statesToString(false, sequence) + " real Sequence: "
+                + statesToString(true));
         if (states.size() < sequence.length) {
             throw new AssertionError(
-                    "Sequence of states " + statesToString(false, sequence) + " is not in " + statesToString(true)
+                    "[1] Sequence of states " + statesToString(false, sequence) + " is not in " + statesToString(true)
                             + " as expected");
         }
         for (int actualStatesIndex = 0; actualStatesIndex < states.size(); actualStatesIndex++) {
@@ -43,7 +48,7 @@ public class ReadinessStatesValidator {
             }
         }
         throw new AssertionError(
-                "Sequence of states " + statesToString(false, sequence) + " is not in " + statesToString(true)
+                "[2] Sequence of states " + statesToString(false, sequence) + " is not in " + statesToString(true)
                         + " as expected");
     }
 
