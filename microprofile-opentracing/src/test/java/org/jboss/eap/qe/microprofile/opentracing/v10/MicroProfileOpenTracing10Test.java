@@ -89,7 +89,7 @@ public class MicroProfileOpenTracing10Test {
     public void testTracePresence() {
         // the tracer inside the application doesn't send traces to the Jaeger server immediately,
         // they are batched, so we need to wait a bit
-        await().atMost(20, TimeUnit.SECONDS).untilAsserted(() -> {
+        await().atMost(30, TimeUnit.SECONDS).untilAsserted(() -> {
             String response = RestAssured.when()
                     .get("http://localhost:16686/api/traces?service=" + APPLICATION_NAME + ".war").asString();
 

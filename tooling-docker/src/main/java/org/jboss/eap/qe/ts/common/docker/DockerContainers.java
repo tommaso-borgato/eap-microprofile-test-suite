@@ -13,15 +13,18 @@ public class DockerContainers {
     } // avoid instantiation
 
     public static Docker jaeger() {
-        return new Docker.Builder("jaeger", "jaegertracing/all-in-one:1.18")
+        return new Docker.Builder("jaeger", "jaegertracing/all-in-one:1.20")
                 .setContainerReadyCondition(() -> {
                     try {
-                        new Socket("127.0.0.1", 16686).close();
+                        new Socket("127.0.0.1", 14268).close(); // logs from clients
+                        new Socket("127.0.0.1", 16686).close(); // frontend
                         return true;
                     } catch (IOException e) {
                         return false;
                     }
                 })
+                .setSleepBetweenStartChecksDuration(500)
+                .setSleepAfterStartDuration(1000)
                 .setContainerReadyTimeout(3, TimeUnit.MINUTES)
                 .withPortMapping("5775:5775/udp")
                 .withPortMapping("6831:6831/udp")

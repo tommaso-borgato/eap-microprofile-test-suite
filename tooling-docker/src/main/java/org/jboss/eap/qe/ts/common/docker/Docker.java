@@ -36,6 +36,8 @@ public class Docker extends ExternalResource {
     private long containerReadyTimeout;
     private ExecutorService outputPrinter;
     private Process dockerRunProcess;
+    private long sleepBetweenStartChecksDuration;
+    private long sleepAfterStartDuration;
 
     private Docker() {
     } // avoid instantiation, use Builder
@@ -98,6 +100,18 @@ public class Docker extends ExternalResource {
             if (!dockerRunProcess.isAlive() && dockerRunProcess.exitValue() != 0) {
                 throw new DockerException(uuid + " - Starting of docker container using command: \"" + String.join(" ", cmd)
                         + "\" failed. Check that provided command is correct.");
+            }
+            if (sleepBetweenStartChecksDuration > 0) {
+                try {
+                    Thread.sleep(sleepBetweenStartChecksDuration);
+                } catch (InterruptedException ex) {
+                }
+            }
+        }
+        if (sleepAfterStartDuration > 0) {
+            try {
+                Thread.sleep(sleepAfterStartDuration);
+            } catch (InterruptedException ex) {
             }
         }
     }
@@ -216,6 +230,8 @@ public class Docker extends ExternalResource {
         private List<String> options = new ArrayList<>();
         private List<String> commandArguments = new ArrayList<>();
         private long containerReadyTimeoutInMillis = 120_000; // 2 minutes
+        private long sleepBetweenStartChecksDuration = 0;
+        private long sleepAfterStartDuration = 0;
 
         // by default - do not make any check
         private ContainerReadyCondition containerReadyCondition = () -> true;
@@ -292,6 +308,27 @@ public class Docker extends ExternalResource {
         }
 
         /**
+         * Sets the wait interval for running the test which tells if the container is started
+         *
+         * @param sleepBetweenStartChecksDuration
+         * @return
+         */
+        public Builder setSleepBetweenStartChecksDuration(long sleepBetweenStartChecksDuration) {
+            this.sleepBetweenStartChecksDuration = sleepBetweenStartChecksDuration;
+            return this;
+        }
+
+        /**
+         * Sets the wait interval after the ready checks succeeded
+         *
+         * @param sleepAfterStartDuration
+         */
+        public Builder setSleepAfterStartDuration(long sleepAfterStartDuration) {
+            this.sleepAfterStartDuration = sleepAfterStartDuration;
+            return this;
+        }
+
+        /**
          * Builds instance of Docker class.
          *
          * @return build Docker instance
@@ -307,6 +344,8 @@ public class Docker extends ExternalResource {
             docker.commandArguments = this.commandArguments;
             docker.containerReadyCondition = containerReadyCondition;
             docker.containerReadyTimeout = containerReadyTimeoutInMillis;
+            docker.sleepBetweenStartChecksDuration = sleepBetweenStartChecksDuration;
+            docker.sleepAfterStartDuration = sleepAfterStartDuration;
             return docker;
         }
     }
